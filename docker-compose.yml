@@ -1,0 +1,8 @@
+services:
+  otpbot:
+    build: .
+    container_name: otpbot
+    restart: always
+    env_file: .env
+    volumes:
+      - ./data:/app/data
