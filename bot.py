@@ -670,12 +670,38 @@ def ims_to_record(r):
             "number": r.get("number", ""), "cli": r.get("cli"),
             "message": r.get("content", ""), "createdAt": r.get("time", "")}
 
+# IMS rate-limit protection: IMS is polled at most every IMS_POLL_SECONDS (Teleroutex still polls every POLL_SECONDS).
+# On HTTP 429 it waits (Retry-After if sent, else 60s doubling up to 300s), and resets after the next success.
+IMS_POLL_SECONDS = float(os.environ.get("IMS_POLL_SECONDS", "20"))
+IMS_BACKOFF_START, IMS_BACKOFF_MAX = 60, 300
+_ims_next_ok = 0.0
+_ims_backoff = 0
+
+class PanelSkipped(Exception):
+    """Panel intentionally not polled right now (throttled / rate-limited). Not an error."""
+
 async def fetch_ims():
+    global _ims_next_ok, _ims_backoff
+    now = time.monotonic()
+    if now < _ims_next_ok:
+        raise PanelSkipped()
+    _ims_next_ok = now + IMS_POLL_SECONDS
     async with httpx.AsyncClient(timeout=20) as c:
         r = await c.get(IMS_API_URL, params={"limit": IMS_LIMIT},
                         headers={"Authorization": f"Bearer {IMS_API_TOKEN}"})   # token in a header: never in a URL or log
-        r.raise_for_status()
-        return [ims_to_record(x) for x in r.json().get("records", [])]
+    if r.status_code == 429:
+        _ims_backoff = min(_ims_backoff * 2, IMS_BACKOFF_MAX) if _ims_backoff else IMS_BACKOFF_START
+        wait = _ims_backoff
+        try:
+            wait = max(wait, min(int(float(r.headers.get("Retry-After", 0))), 600))
+        except (TypeError, ValueError):
+            pass
+        _ims_next_ok = time.monotonic() + wait
+        log.info("IMS rate-limited, waiting %ss", int(wait))
+        raise PanelSkipped()
+    r.raise_for_status()
+    _ims_backoff = 0
+    return [ims_to_record(x) for x in r.json().get("records", [])]
 
 _panel_ready = set()
 
@@ -696,6 +722,8 @@ async def fetch_records():
     results = await asyncio.gather(*(_fetch_panel(n, f) for n, f in panels), return_exceptions=True)
     out, failed = [], []
     for (name, _), res in zip(panels, results):
+        if isinstance(res, PanelSkipped):
+            continue                          # throttled / rate-limited on purpose: stay quiet
         if isinstance(res, Exception):
             failed.append(res)
             code = getattr(getattr(res, "response", None), "status_code", "")
@@ -1733,7 +1761,7 @@ async def api_poller(app):
     panels = ["Teleroutex"]
     if IMS_API_TOKEN:
         panels.append("IMS SMS")
-    log.info("API mode: dual-panel ready → %s  |  poll every %ss", " + ".join(panels), POLL_SECONDS)
+    log.info("API mode: dual-panel ready → %s  |  poll every %ss (IMS every %ss)", " + ".join(panels), POLL_SECONDS, int(IMS_POLL_SECONDS))
     while True:
         await asyncio.sleep(POLL_SECONDS)
         try:
