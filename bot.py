@@ -123,6 +123,7 @@ PAY_EVERY_OTP = True
 OTP_PUBLIC_VISIBLE_DIGITS = 99
 
 REFERRAL_PRICE = 0
+REFERRAL_COMMISSION = 0.05   # 5% of invitee's OTP earnings go to the inviter (lifetime)
 MIN_WITHDRAW, MAX_WITHDRAW = 50, 10000
 NUMBERS_PER_REQUEST = int(os.environ.get("NUMBERS_PER_REQUEST", "3"))
 OTP_VALID_MINUTES = int(os.environ.get("OTP_VALID_MINUTES", "10"))
@@ -212,7 +213,7 @@ T = {
         "success": "{country} · <b>{sid}</b>\n📟 <code>{num}</code>\n🕒 {time}\n💵 +{rate} BDT",
         "timeout": "⌛ <b>No OTP received.</b> Try another number.",
         "cc": "🌍 With country code", "nocc": "🔢 Without country code",
-        "change": "🔄 Change Number", "view_otp": "📩 View OTP", "cancel": "❌ Cancel", "cancelled": "Cancelled.",
+        "change": "🔄 Change Number", "view_otp": "📩 View OTP", "cancel": "❌ Cancel", "back": "🔙 Back", "cancelled": "Cancelled.",
         "ask_2fa": "🔑 <b>Enter your 2FA Secret Key:</b>",
         "bad_2fa": "🛑 <b>INVALID SECRET KEY</b>",
         "code_2fa": "🔐 Code: <code>{c}</code>\n⏱ Valid for {s}s",
@@ -230,7 +231,7 @@ T = {
         "wd_paid": "✅ Withdrawal #{id} was paid.",
         "wd_rejected": "❌ Withdrawal #{id} was rejected and refunded.",
         "wd_closed": "⛔ Withdrawals are closed right now. Please try again later.",
-        "refer_msg": "🎁 <b>[ REFERRAL ]</b>\n━━━━━━━━━━━━━━━━━━━━━━\n👥 Invites: <code>{n}</code>\n🪙 Earned: <code>{r} BDT</code>\n\n🔗 <code>{link}</code>",
+        "refer_msg": "🎁 <b>[ REFERRAL ]</b>\n━━━━━━━━━━━━━━━━━━━━━━\n💡 Invite your friends and get <b>5% Commission lifetime</b>\n\n👥 Invites: <code>{n}</code>\n🪙 Commission earned: <code>{r} BDT</code>\n\n🔗 <code>{link}</code>",
         "lang_msg": "🌐 <b>Select your language:</b>", "lang_set": "✅ Language updated.",
         "board": "🏆 <b>TOP 10 OTP LEADERBOARD</b>\n━━━━━━━━━━━━━━━━━━━━━━\n",
         "lb_24h": "⏱ Last 24 hours", "lb_7d": "📅 Last 7 days", "lb_all": "♾ All time",
@@ -268,7 +269,7 @@ T = {
         "success": "{country} · <b>{sid}</b>\n📟 <code>{num}</code>\n🕒 {time}\n💵 +{rate} BDT",
         "timeout": "⌛ <b>ওটিপি আসেনি।</b> অন্য নম্বর নিন।",
         "cc": "🌍 কান্ট্রি কোড সহ", "nocc": "🔢 কান্ট্রি কোড ছাড়া",
-        "change": "🔄 নম্বর পরিবর্তন", "view_otp": "📩 ওটিপি দেখুন", "cancel": "❌ বাতিল", "cancelled": "বাতিল করা হয়েছে।",
+        "change": "🔄 নম্বর পরিবর্তন", "view_otp": "📩 ওটিপি দেখুন", "cancel": "❌ বাতিল", "back": "🔙 ফিরে যান", "cancelled": "বাতিল করা হয়েছে।",
         "ask_2fa": "🔑 <b>আপনার 2FA সিক্রেট কী পাঠান:</b>",
         "bad_2fa": "🛑 <b>ভুল সিক্রেট কী</b>",
         "code_2fa": "🔐 কোড: <code>{c}</code>\n⏱ মেয়াদ {s} সেকেন্ড",
@@ -286,7 +287,7 @@ T = {
         "wd_paid": "✅ উইথড্র #{id} পেমেন্ট হয়েছে।",
         "wd_rejected": "❌ উইথড্র #{id} বাতিল হয়েছে, টাকা ফেরত দেওয়া হয়েছে।",
         "wd_closed": "⛔ উইথড্র এখন বন্ধ আছে। পরে চেষ্টা করুন।",
-        "refer_msg": "🎁 <b>[ রেফারেল ]</b>\n━━━━━━━━━━━━━━━━━━━━━━\n👥 সফল রেফার: <code>{n}</code>\n🪙 অর্জিত: <code>{r} BDT</code>\n\n🔗 <code>{link}</code>",
+        "refer_msg": "🎁 <b>[ রেফারেল ]</b>\n━━━━━━━━━━━━━━━━━━━━━━\n💡 বন্ধুদের আমন্ত্রণ জানান এবং পান <b>৫% কমিশন লাইফটাইম</b>\n\n👥 সফল রেফার: <code>{n}</code>\n🪙 কমিশন আয়: <code>{r} BDT</code>\n\n🔗 <code>{link}</code>",
         "lang_msg": "🌐 <b>ভাষা সিলেক্ট করুন:</b>", "lang_set": "✅ ভাষা পরিবর্তন হয়েছে।",
         "board": "🏆 <b>টপ ১০ ওটিপি লিডারবোর্ড</b>\n━━━━━━━━━━━━━━━━━━━━━━\n",
         "lb_24h": "⏱ গত ২৪ ঘণ্টা", "lb_7d": "📅 গত ৭ দিন", "lb_all": "♾ সর্বমোট",
@@ -504,7 +505,7 @@ def lb_view(u, period="all"):
 
 MENU_KEYS = ("get", "search", "traffic", "live", "profile", "stats", "refer", "support", "lang", "admin")
 PLAIN_KEYS = set(MENU_KEYS) | {"btn_join", "btn_join_grp", "btn_cont", "cc", "nocc", "change", "view_otp", "search_cancel",
-                               "cancel", "help", "dev", "withdraw"}          # button labels: plain text, no HTML
+                               "cancel", "back", "help", "dev", "withdraw"}          # button labels: plain text, no HTML
 LANG_NAMES = {"en": "English", "bn": "বাংলা"}
 TEXT_PAGE = 8
 
@@ -674,9 +675,10 @@ def get_user(tg_user):
     if not u:
         u = {"name": tg_user.full_name, "username": tg_user.username or "", "lang": "bn",
              "balance": 0.0, "nums": 0, "otps": 0, "day": str(date.today()), "dn": 0, "do": 0,
-             "refs": 0, "ref_by": None, "banned": False}
+             "refs": 0, "ref_earn": 0.0, "ref_by": None, "banned": False}
         db["users"][uid] = u
     u["name"], u["username"] = tg_user.full_name, tg_user.username or ""
+    u.setdefault("ref_earn", 0.0)
     if u["day"] != str(date.today()):
         u["day"], u["dn"], u["do"] = str(date.today()), 0, 0
     return u
@@ -695,6 +697,23 @@ def esc(s):
 
 def is_admin(uid):
     return uid in ADMINS
+
+def pay_referral(earner_uid, amount):
+    """Credit the inviter 5% of the invitee's OTP earnings (lifetime commission)."""
+    if amount <= 0:
+        return
+    earner = db["users"].get(str(earner_uid))
+    if not earner:
+        return
+    ref = earner.get("ref_by")
+    if not ref or ref not in db["users"]:
+        return
+    commission = round(amount * REFERRAL_COMMISSION, 4)
+    if commission <= 0:
+        return
+    inviter = db["users"][ref]
+    inviter["balance"] = round(inviter.get("balance", 0) + commission, 4)
+    inviter["ref_earn"] = round(inviter.get("ref_earn", 0) + commission, 4)
 
 # ==================== CUSTOM EMOJI ON BUTTONS ====================
 def eb(text, key, **kw):
@@ -729,9 +748,9 @@ async def setemoji(update, ctx):
         cur = "\n".join(f"{k}: {v}" for k, v in db["emoji"].items()) or "none yet"
         return await update.message.reply_text(
             "Usage: /setemoji KEY EMOJI_ID  (or /setemoji KEY off)\n"
-            "KEY = service name (e.g. WHATSAPP) or cc / nocc / change / view_otp / cancel\n\n"
+            "KEY = service name (e.g. WHATSAPP) or cc / nocc / change / view_otp / cancel / back\n\n"
             "Send me a message with a premium emoji to get its id.\n\nCurrent:\n" + cur)
-    key = a[0] if a[0] in ("cc", "nocc", "change", "view_otp", "cancel") else a[0].upper()
+    key = a[0] if a[0] in ("cc", "nocc", "change", "view_otp", "cancel", "back") else a[0].upper()
     if a[1].lower() == "off":
         db["emoji"].pop(key, None)
     else:
@@ -1427,7 +1446,7 @@ async def do_action(update, ctx, u, action):
                               to=u["do"], an=u["nums"], ao=u["otps"]), parse_mode="HTML", reply_markup=kb)
     elif action == "refer":
         link = f"https://t.me/{ctx.bot.username}?start=ref_{uid}"
-        await m.reply_text(tr(u, "refer_msg", n=u["refs"], r=u["refs"] * REFERRAL_PRICE, link=link),
+        await m.reply_text(tr(u, "refer_msg", n=u["refs"], r=f"{u.get('ref_earn', 0):.2f}", link=link),
                            parse_mode="HTML")
     elif action == "support":
         kb = InlineKeyboardMarkup([[InlineKeyboardButton(tr(u, "help"), url=SUPPORT_LINK)],
@@ -1477,7 +1496,7 @@ def scanning_text(u, country, sid, mins, nums, fmt):
     return tr(u, "scanning", flag=flag, country=country, sid=sid, mins=mins)
 
 def batch_kb(u, sid, prefix, nums, fmt, first_num, bid=None):
-    """Keyboard: one copy button per number, then format / change / view / cancel."""
+    """Keyboard: one copy button per number, then format / change / view / cancel / back."""
     mark = lambda k: ("✅ " if fmt == k else "") + tr(u, k)
     rows = []
     for n in nums:                      # one number per row = full-width green copy button
@@ -1489,7 +1508,8 @@ def batch_kb(u, sid, prefix, nums, fmt, first_num, bid=None):
                  eb(mark("nocc"), "nocc", callback_data=f"fmt:{first_num}:nocc")])
     rows.append([eb(tr(u, "change"), "change", callback_data=f"chg:{sid}:{prefix}:{first_num}" + (f":{bid}" if bid else "")),
                  view_btn(u, first_num)])
-    rows.append([eb(tr(u, "cancel"), "cancel", callback_data=f"cancel:{first_num}")])
+    rows.append([eb(tr(u, "cancel"), "cancel", callback_data=f"cancel:{first_num}"),
+                 eb(tr(u, "back"), "back", callback_data=f"back:{sid}:{first_num}")])
     return InlineKeyboardMarkup(rows)
 
 def num_kb(u, sid, prefix, num, fmt):
@@ -1695,6 +1715,7 @@ async def complete(ctx, num, otp, cli=None):
         count_hour(u)
         if rate:
             bump(u, "eh", rate)
+            pay_referral(e["uid"], rate)
     db["traffic"].append({"t": datetime.now(timezone.utc).isoformat(), "sid": e["sid"], "num": num})
     cut = datetime.now(timezone.utc) - timedelta(minutes=max(TRAFFIC_MINUTES, 15) + 15)
     db["traffic"] = [x for x in db["traffic"] if (parse_time(x.get("t")) or cut) >= cut]   # drop old entries
@@ -1785,6 +1806,7 @@ async def forward_text(app, num, text, cli, e):
             count_hour(u)
             if rate:
                 bump(u, "eh", rate)
+                pay_referral(e["uid"], rate)
         db["traffic"].append({"t": datetime.now(timezone.utc).isoformat(), "sid": e["sid"], "num": num})
         cut = datetime.now(timezone.utc) - timedelta(minutes=max(TRAFFIC_MINUTES, 15) + 15)
         db["traffic"] = [x for x in db["traffic"] if (parse_time(x.get("t")) or cut) >= cut]
@@ -2358,6 +2380,42 @@ async def on_cb(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
                     ent["task"].cancel()
                 db["held"].pop(n, None)
         await q.edit_message_text(tr(u, "cancelled"))
+    elif data.startswith("back:"):
+        # Release current numbers and go back to country selection for this service
+        parts = data.split(":")
+        sid = parts[1] if len(parts) > 1 else ""
+        num = parts[2] if len(parts) > 2 else ""
+        e = ACTIVE.get(num)
+        if e and e["uid"] == str(uid):
+            batch = e.get("batch")
+            group = [n for n, ent in ACTIVE.items()
+                     if ent["uid"] == str(uid) and (n == num or (batch and ent.get("batch") == batch))]
+            for n in group:
+                ent = ACTIVE.pop(n, None)
+                if ent and ent.get("task"):
+                    ent["task"].cancel()
+                db["held"].pop(n, None)
+            save()
+        if sid not in SERVICES:
+            return await q.edit_message_text(tr(u, "no_numbers"), parse_mode="HTML")
+        counts = {}
+        for n in db["pools"].get(sid, []):
+            p, _ = country_of(n)
+            key = (p, num_label(sid, n))
+            counts[key] = counts.get(key, 0) + 1
+        if not counts:
+            return await q.edit_message_text(tr(u, "no_numbers"), parse_mode="HTML")
+        btns = []
+        for (p, lab), c in sorted(counts.items(), key=lambda kv: -kv[1]):
+            flag = PREFIXES[p][0] if p in PREFIXES else "🌍"
+            if lab:
+                label = f"{flag} {lab} ({c})"
+            else:
+                label = f"{PREFIXES[p][0]} {PREFIXES[p][1]} ({c})" if p in PREFIXES else f"🌍 Other ({c})"
+            btns.append(InlineKeyboardButton(label, callback_data=f"cty:{sid}:{p}" + (f":{label_id(lab)}" if lab else "")))
+        rows = [btns[i:i + 2] for i in range(0, len(btns), 2)]
+        await q.edit_message_text(tr(u, "pick_country", sid=sid), parse_mode="HTML",
+                                  reply_markup=InlineKeyboardMarkup(rows))
     elif data.startswith("lb:"):
         text, kb = lb_view(u, data[3:])
         try:
