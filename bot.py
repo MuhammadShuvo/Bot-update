@@ -17,7 +17,9 @@ Admin adds numbers by sending a .txt / .csv file (one number per line)
 or with: /addnumbers SERVICE 8801xxxxxxx 8801yyyyyyy
 """
 import asyncio
+import csv
 import hashlib
+import io
 import html
 import json
 import logging
@@ -180,7 +182,19 @@ PREFIXES = {code: (_flag(iso), name) for code, (iso, name) in CALLING.items()}
 T = {
     "en": {
         "welcome": "🐰❤️ <b>Welcome To Our RoutexSMS Premium Bot</b> 🐰❤️\n\nHere you can earn easily using Our Numbers 🔥\n\n⚙️ Settings:\n├ Current Language → English\n└ 👉 Click here to switch → /language\n\n😎 <b>Start Your Work Now</b> 🚀",
-        "get": "💬 GET NUMBER", "search": "🔍 Search Number", "traffic": "🏆 LEADERBOARD", "live": "📟 TRAFFIC",
+        "get": "💬 GET NUMBER", "search": "🔍 Search Number", "stats": "📊 Statistics", "unranked": "Unranked",
+        "stats_msg": ("📈 <b>PERSONAL STATISTICS REPORT</b>\n━━━━━━━━━━━━━━━━━━━━━━\n"
+                      "👤 Name: <b>{name}</b>\n🆔 User ID: <code>{uid}</code>\n"
+                      "👑 Your Rank: <b>{rt}</b> (Today) | <b>{ra}</b> (All-Time)\n🕒 Generated At: <code>{now}</code>\n\n"
+                      "📅 <b>[ 1. TODAY'S STATS ]</b>\n├ 👑 Today's Rank: <b>{rt}</b>\n├ ☎️ Numbers Ordered: <b>{tn} pcs</b>\n"
+                      "├ 🔑 OTPs Received: <b>{to} pcs</b>\n├ 📈 Success Rate: <b>{tsr}%</b>\n├ 💰 OTP Earnings: <b>{te} BDT</b>\n"
+                      "├ 🎁 New Referrals: <b>{tf} users</b>\n└ 💵 Total Earned: <b>{tt} BDT</b>\n\n"
+                      "🗓 <b>[ 2. LAST 7 DAYS ]</b>\n├ ☎️ Numbers Ordered: <b>{wn} pcs</b>\n├ 🔑 OTPs Received: <b>{wo} pcs</b>\n"
+                      "├ 📈 Success Rate: <b>{wsr}%</b>\n├ 💰 OTP Earnings: <b>{we} BDT</b>\n├ 🎁 Total Referrals: <b>{wf} users</b>\n"
+                      "└ 💵 Total Earned: <b>{wt} BDT</b>\n\n"
+                      "🌐 <b>[ 3. ALL-TIME STATS ]</b>\n├ 👑 All-Time Rank: <b>{ra}</b>\n├ ☎️ Numbers Ordered: <b>{an} pcs</b>\n"
+                      "├ 🔑 OTPs Received: <b>{ao} pcs</b>\n├ 📈 Success Rate: <b>{asr}%</b>\n├ 💰 OTP Earnings: <b>{ae} BDT</b>\n"
+                      "├ 🎁 Total Referrals: <b>{af} users</b>\n└ 💵 Total Earned: <b>{at} BDT</b>"), "traffic": "🏆 LEADERBOARD", "live": "📟 TRAFFIC",
         "profile": "👤 PROFILE", "refer": "🎁 Refer", "support": "👤 SUPPORT",
         "lang": "🌐 LANGUAGE", "admin": "⚙️ ADMIN PANEL",
         "search_prompt": "🔍 <b>Search Number</b>\n\nSend <b>3–9 digits</b> to find a number.\n\nExample: <code>880</code> or <code>01892</code>",
@@ -224,7 +238,19 @@ T = {
     },
     "bn": {
         "welcome": "💎 <b>[ নোড অ্যাক্সেস সফল ]</b> 💎\n━━━━━━━━━━━━━━━━━━━━━━\n🟢 সংযোগ: <code>সক্রিয়</code>",
-        "get": "💬 নম্বর নিন", "search": "🔍 নম্বর সার্চ", "traffic": "🏆 লিডারবোর্ড", "live": "📟 ট্রাফিক",
+        "get": "💬 নম্বর নিন", "search": "🔍 নম্বর সার্চ", "stats": "📊 পরিসংখ্যান", "unranked": "র‍্যাঙ্ক নেই",
+        "stats_msg": ("📈 <b>ব্যক্তিগত পরিসংখ্যান রিপোর্ট</b>\n━━━━━━━━━━━━━━━━━━━━━━\n"
+                      "👤 নাম: <b>{name}</b>\n🆔 ইউজার আইডি: <code>{uid}</code>\n"
+                      "👑 আপনার র‍্যাঙ্ক: <b>{rt}</b> (আজ) | <b>{ra}</b> (সর্বমোট)\n🕒 তৈরির সময়: <code>{now}</code>\n\n"
+                      "📅 <b>[ ১. আজকের পরিসংখ্যান ]</b>\n├ 👑 আজকের র‍্যাঙ্ক: <b>{rt}</b>\n├ ☎️ নম্বর নেওয়া: <b>{tn} টি</b>\n"
+                      "├ 🔑 ওটিপি পাওয়া: <b>{to} টি</b>\n├ 📈 সফলতার হার: <b>{tsr}%</b>\n├ 💰 ওটিপি আয়: <b>{te} BDT</b>\n"
+                      "├ 🎁 নতুন রেফার: <b>{tf} জন</b>\n└ 💵 মোট আয়: <b>{tt} BDT</b>\n\n"
+                      "🗓 <b>[ ২. গত ৭ দিন ]</b>\n├ ☎️ নম্বর নেওয়া: <b>{wn} টি</b>\n├ 🔑 ওটিপি পাওয়া: <b>{wo} টি</b>\n"
+                      "├ 📈 সফলতার হার: <b>{wsr}%</b>\n├ 💰 ওটিপি আয়: <b>{we} BDT</b>\n├ 🎁 মোট রেফার: <b>{wf} জন</b>\n"
+                      "└ 💵 মোট আয়: <b>{wt} BDT</b>\n\n"
+                      "🌐 <b>[ ৩. সর্বমোট পরিসংখ্যান ]</b>\n├ 👑 সর্বমোট র‍্যাঙ্ক: <b>{ra}</b>\n├ ☎️ নম্বর নেওয়া: <b>{an} টি</b>\n"
+                      "├ 🔑 ওটিপি পাওয়া: <b>{ao} টি</b>\n├ 📈 সফলতার হার: <b>{asr}%</b>\n├ 💰 ওটিপি আয়: <b>{ae} BDT</b>\n"
+                      "├ 🎁 মোট রেফার: <b>{af} জন</b>\n└ 💵 মোট আয়: <b>{at} BDT</b>"), "traffic": "🏆 লিডারবোর্ড", "live": "📟 ট্রাফিক",
         "profile": "👤 প্রোফাইল", "refer": "🎁 রেফার করুন", "support": "👤 সাপোর্ট",
         "lang": "🌐 ভাষা পরিবর্তন", "admin": "⚙️ অ্যাডমিন প্যানেল",
         "search_prompt": "🔍 <b>নম্বর সার্চ</b>\n\nনম্বর খুঁজতে <b>৩–৯ ডিজিট</b> পাঠান।\n\nউদাহরণ: <code>880</code> অথবা <code>01892</code>",
@@ -269,7 +295,7 @@ T = {
 }
 LABEL_ACTIONS = {}
 for _l, _d in T.items():
-    for _k in ("get", "search", "traffic", "live", "profile", "refer", "support", "lang", "admin"):
+    for _k in ("get", "search", "traffic", "live", "profile", "stats", "refer", "support", "lang", "admin"):
         LABEL_ACTIONS[_d[_k]] = _k
 LABEL_ACTIONS["📟 লিডারবোর্ড"] = "traffic"       # old Bengali leaderboard label (old keyboards)
 
@@ -365,15 +391,93 @@ def rename_service(old, new):
             e["sid"] = new
     save()
 
-def count_hour(u):
-    """Hourly OTP counters (used by the 24h / 7 days leaderboard). Hours older than 8 days are dropped."""
+def bump(u, field, amount=1):
+    """Hourly counters (UTC hours), 8 days kept. field: hours=OTPs, nh=numbers, eh=earnings, rh=referrals."""
     now = datetime.now(timezone.utc)
-    h = u.setdefault("hours", {})
+    h = u.setdefault(field, {})
     k = now.strftime("%Y%m%d%H")
-    h[k] = h.get(k, 0) + 1
+    h[k] = round(h.get(k, 0) + amount, 6)
     cut = (now - timedelta(days=8)).strftime("%Y%m%d%H")
     for old in [x for x in h if x < cut]:
         del h[old]
+
+def count_hour(u):
+    """Hourly OTP counters (used by the 24h / 7 days leaderboard)."""
+    bump(u, "hours")
+
+def period_sum(u, field, period):
+    """Sum of an hourly counter for 'today' (local day, TIMEZONE_HOURS) or '7d' (last 7 local days incl. today)."""
+    start = datetime.now(timezone(timedelta(hours=TIMEZONE_HOURS))).replace(hour=0, minute=0, second=0, microsecond=0)
+    if period == "7d":
+        start -= timedelta(days=6)
+    cut = start.astimezone(timezone.utc).strftime("%Y%m%d%H")
+    return sum(v for k, v in u.get(field, {}).items() if k >= cut)
+
+def withdrawn_total(uid):
+    return sum(w.get("amount", 0) for w in db["withdraws"].values()
+               if str(w.get("uid")) == str(uid) and w.get("status") in ("paid", "pending"))
+
+def rate_pct(o, n):
+    return f"{min(100.0, o * 100.0 / n):.1f}" if n else "0.0"
+
+def stats_text(u, uid):
+    """Personal Statistics report: today / last 7 days / all time."""
+    uid = str(uid)
+    me_t = period_sum(u, "hours", "today")
+    users = db["users"].values()
+    rt = tr(u, "unranked") if me_t == 0 else "#" + str(1 + sum(1 for x in users if period_sum(x, "hours", "today") > me_t))
+    ra = tr(u, "unranked") if u.get("otps", 0) == 0 else "#" + str(1 + sum(1 for x in users if x.get("otps", 0) > u.get("otps", 0)))
+    tn, to_, te, tf = (period_sum(u, f, "today") for f in ("nh", "hours", "eh", "rh"))
+    wn, wo, we, wf = (period_sum(u, f, "7d") for f in ("nh", "hours", "eh", "rh"))
+    an, ao, af = u.get("nums", 0), u.get("otps", 0), u.get("refs", 0)
+    a_total = u.get("balance", 0) + withdrawn_total(uid)          # all money earned = balance + already withdrawn
+    a_ref = af * REFERRAL_PRICE
+    m = lambda v: f"{v:.2f}"
+    return tr(u, "stats_msg", name=esc(u["name"]), uid=uid, rt=rt, ra=ra,
+              now=datetime.now(timezone(timedelta(hours=TIMEZONE_HOURS))).strftime("%Y-%m-%d %H:%M:%S"),
+              tn=int(tn), to=int(to_), tsr=rate_pct(to_, tn), te=m(te), tf=int(tf), tt=m(te + tf * REFERRAL_PRICE),
+              wn=int(wn), wo=int(wo), wsr=rate_pct(wo, wn), we=m(we), wf=int(wf), wt=m(we + wf * REFERRAL_PRICE),
+              an=an, ao=ao, asr=rate_pct(ao, an), ae=m(a_total - a_ref), af=af, at=m(a_total))
+
+MEM_PAGE = 8
+
+def members_view(sort="otps", page=0):
+    """Admin: every member with the numbers they got and the OTPs they received."""
+    items = [(uid, x, x.get("nums", 0), x.get("otps", 0)) for uid, x in db["users"].items()]
+    items.sort(key=lambda t: (-(t[3] if sort == "otps" else t[2]), -t[2]))
+    pages = max(1, (len(items) + MEM_PAGE - 1) // MEM_PAGE)
+    page = max(0, min(page, pages - 1))
+    tot_n, tot_o = sum(t[2] for t in items), sum(t[3] for t in items)
+    lines = []
+    for i, (uid, x, n, o) in enumerate(items[page * MEM_PAGE:(page + 1) * MEM_PAGE], start=page * MEM_PAGE + 1):
+        lines.append(f"{i}. <b>{esc(x.get('name', '')[:18])}</b>  <code>{uid}</code>\n"
+                     f"     ☎️ {n} · 🔑 {o} · 📈 {rate_pct(o, n)}% · 💰 {x.get('balance', 0):.2f}")
+    text = (f"👥 <b>Members</b> ({len(items)})  ☎️ {tot_n} · 🔑 {tot_o}\n"
+            f"Sorted by {'OTPs' if sort == 'otps' else 'Numbers'} · page {page + 1}/{pages}\n"
+            "☎️ numbers got · 🔑 OTPs got · 📈 success · 💰 balance\n\n" + "\n".join(lines))
+    tabs = [InlineKeyboardButton(("✅ " if sort == "otps" else "") + "By OTPs", callback_data="adm:mem:otps:0"),
+            InlineKeyboardButton(("✅ " if sort == "nums" else "") + "By Numbers", callback_data="adm:mem:nums:0")]
+    nav = []
+    if page > 0:
+        nav.append(InlineKeyboardButton("◀ Prev", callback_data=f"adm:mem:{sort}:{page - 1}"))
+    if page < pages - 1:
+        nav.append(InlineKeyboardButton("Next ▶", callback_data=f"adm:mem:{sort}:{page + 1}"))
+    rows = [tabs] + ([nav] if nav else []) + [[InlineKeyboardButton("📄 Export all as CSV", callback_data="adm:memcsv")]]
+    return text, InlineKeyboardMarkup(rows)
+
+def members_csv():
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(["user_id", "name", "username", "numbers_ordered", "otps_received", "success_rate_pct", "balance",
+                "numbers_today", "otps_today", "numbers_7d", "otps_7d", "referrals", "banned"])
+    for uid, x in sorted(db["users"].items(), key=lambda kv: -kv[1].get("otps", 0)):
+        n, o = x.get("nums", 0), x.get("otps", 0)
+        w.writerow([uid, x.get("name", ""), x.get("username", ""), n, o, rate_pct(o, n), round(x.get("balance", 0), 2),
+                    int(period_sum(x, "nh", "today")), int(period_sum(x, "hours", "today")),
+                    int(period_sum(x, "nh", "7d")), int(period_sum(x, "hours", "7d")), x.get("refs", 0), x.get("banned", False)])
+    bio = io.BytesIO(buf.getvalue().encode("utf-8-sig"))      # utf-8-sig: Excel shows Bangla names correctly
+    bio.name = "members_stats.csv"
+    return bio
 
 def otp_count(u, period):
     if period == "all":
@@ -398,7 +502,7 @@ def lb_view(u, period="all"):
                                 for p, lab in names]])
     return text, kb
 
-MENU_KEYS = ("get", "search", "traffic", "live", "profile", "refer", "support", "lang", "admin")
+MENU_KEYS = ("get", "search", "traffic", "live", "profile", "stats", "refer", "support", "lang", "admin")
 PLAIN_KEYS = set(MENU_KEYS) | {"btn_join", "btn_join_grp", "btn_cont", "cc", "nocc", "change", "view_otp", "search_cancel",
                                "cancel", "help", "dev", "withdraw"}          # button labels: plain text, no HTML
 LANG_NAMES = {"en": "English", "bn": "বাংলা"}
@@ -640,8 +744,9 @@ def main_menu(u, uid):
     t = lambda k: tr(u, k)
     rows = [[t("get"), t("search")],
             [t("traffic"), t("live")],
-            [t("profile"), t("refer")],
-            [t("support"), t("lang")]]
+            [t("profile"), t("stats")],
+            [t("refer"), t("support")],
+            [t("lang")]]
     if is_admin(uid):
         rows.append([t("admin")])
     return ReplyKeyboardMarkup(rows, resize_keyboard=True)
@@ -849,6 +954,7 @@ async def start(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         if ref != uid and ref in db["users"]:
             u["ref_by"] = ref
             db["users"][ref]["refs"] += 1
+            bump(db["users"][ref], "rh")
             db["users"][ref]["balance"] += REFERRAL_PRICE
     save()
     u = await gate(update, ctx)
@@ -1313,6 +1419,8 @@ async def do_action(update, ctx, u, action):
         await m.reply_text(text, parse_mode="HTML", reply_markup=kb)
     elif action == "live":
         await m.reply_text(traffic_text(u), parse_mode="HTML", reply_markup=traffic_kb())
+    elif action == "stats":
+        await m.reply_text(stats_text(u, update.effective_user.id), parse_mode="HTML")
     elif action == "profile":
         kb = InlineKeyboardMarkup([[InlineKeyboardButton(tr(u, "withdraw"), callback_data="wd")]])
         await m.reply_text(tr(u, "profile_msg", name=esc(u["name"]), uid=uid, bal=u["balance"], tn=u["dn"],
@@ -1333,6 +1441,7 @@ async def do_action(update, ctx, u, action):
         rows = [[InlineKeyboardButton("📊 Stats", callback_data="adm:stats")],
                 [InlineKeyboardButton("💸 Pending withdrawals", callback_data="adm:pend")],
                 [InlineKeyboardButton(wd_btn_text(), callback_data="adm:wdtoggle")],
+                [InlineKeyboardButton("👥 Members stats", callback_data="adm:memo")],
                 [InlineKeyboardButton("✏️ Edit texts & buttons", callback_data="adm:txt")],
                 [InlineKeyboardButton("💵 OTP Rates", callback_data="adm:rates")],
                 [InlineKeyboardButton(f"🔢 Numbers per request: {get_npr()}", callback_data="adm:npr")]]
@@ -1497,6 +1606,7 @@ async def allocate(update, ctx, u, sid, prefix, replace=None, bid=None):
         pool.remove(num)
         u["nums"] += 1
         u["dn"] += 1
+        bump(u, "nh")
         _, country = country_of(num)
         entry = {"uid": uid, "sid": sid, "country": country, "msg": msg, "prefix": prefix, "fmt": fmt,
                  "batch": batch, "bid": bid, "nums": list(picks), "since": datetime.now(timezone.utc) - timedelta(seconds=30)}
@@ -1529,6 +1639,7 @@ async def allocate_from_search(update, ctx, u, query):
             pool.remove(num)
         u["nums"] += 1
         u["dn"] += 1
+        bump(u, "nh")
         _, country = country_of(num)
         entry = {"uid": uid, "sid": sid, "country": country, "msg": msg, "prefix": query, "fmt": fmt,
                  "batch": batch, "bid": None, "nums": list(picks),
@@ -1582,6 +1693,8 @@ async def complete(ctx, num, otp, cli=None):
         u["otps"] += 1
         u["do"] += 1
         count_hour(u)
+        if rate:
+            bump(u, "eh", rate)
     db["traffic"].append({"t": datetime.now(timezone.utc).isoformat(), "sid": e["sid"], "num": num})
     cut = datetime.now(timezone.utc) - timedelta(minutes=max(TRAFFIC_MINUTES, 15) + 15)
     db["traffic"] = [x for x in db["traffic"] if (parse_time(x.get("t")) or cut) >= cut]   # drop old entries
@@ -1670,6 +1783,8 @@ async def forward_text(app, num, text, cli, e):
             u["otps"] += 1
             u["do"] += 1
             count_hour(u)
+            if rate:
+                bump(u, "eh", rate)
         db["traffic"].append({"t": datetime.now(timezone.utc).isoformat(), "sid": e["sid"], "num": num})
         cut = datetime.now(timezone.utc) - timedelta(minutes=max(TRAFFIC_MINUTES, 15) + 15)
         db["traffic"] = [x for x in db["traffic"] if (parse_time(x.get("t")) or cut) >= cut]
@@ -2050,6 +2165,19 @@ async def on_cb(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             return await q.message.reply_text(
                 f"📥 Now send the .txt/.csv file with numbers for <b>{sid}</b>.\n"
                 "Every file you send goes to this service until you pick another.", parse_mode="HTML")
+        if data == "adm:memo":
+            text, kb = members_view("otps", 0)
+            return await q.message.reply_text(text, parse_mode="HTML", reply_markup=kb)
+        if data.startswith("adm:mem:"):
+            _, _, sort, page = data.split(":")
+            text, kb = members_view(sort if sort in ("otps", "nums") else "otps", int(page))
+            try:
+                return await q.edit_message_text(text, parse_mode="HTML", reply_markup=kb)
+            except Exception:
+                return
+        if data == "adm:memcsv":
+            return await q.message.reply_document(members_csv(), filename="members_stats.csv",
+                                                  caption="👥 All members: numbers got and OTPs received")
         if data == "adm:txt":
             kb = InlineKeyboardMarkup([[InlineKeyboardButton(n, callback_data=f"adm:txl:{lg}:0")]
                                        for lg, n in LANG_NAMES.items()])
